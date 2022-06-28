@@ -16,16 +16,16 @@ interface UserDao {
     @Query("SELECT * FROM User WHERE username = :username")
     fun getUserId(username: String): User
 
-//    @Insert(onConflict = OnConflictStrategy.REPLACE)
-//    fun insertNote(note: Note): Long
-//
-//    @Query("SELECT * FROM Note WHERE id_user = :userId")
-//    fun getAllNote(userId: Int): List<Note>
-//
-//    @Update
-//    fun updateNote(note: Note): Int
-//
-//    @Delete
-//    fun deleteNote(note: Note): Int
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertNote(note: Note): Long
+
+    @Query("SELECT * FROM Note WHERE id_user = :userId")
+    fun getAllNote(userId: Int): List<Note>
+
+    @Update
+    fun updateNote(note: Note): Int
+
+    @Delete
+    fun deleteNote(note: Note): Int
 
 }

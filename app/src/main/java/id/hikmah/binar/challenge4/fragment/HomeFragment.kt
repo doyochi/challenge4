@@ -1,60 +1,228 @@
 package id.hikmah.binar.challenge4.fragment
 
+import android.app.AlertDialog
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
+import androidx.core.view.isGone
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.textfield.TextInputLayout
+import id.hikmah.binar.challenge4.AuthActivity
 import id.hikmah.binar.challenge4.R
+import id.hikmah.binar.challenge4.adapter.NoteActionListener
+import id.hikmah.binar.challenge4.adapter.NoteAdapter
+import id.hikmah.binar.challenge4.database.Note
+import id.hikmah.binar.challenge4.database.UserDatabase
+import id.hikmah.binar.challenge4.databinding.FragmentHomeBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [HomeFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class HomeFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
+    private var _binding: FragmentHomeBinding? = null
+    private val binding get() = _binding!!
+
+    private lateinit var sharedPref: SharedPreferences
+    private lateinit var noteAdapter: NoteAdapter
+    private var userDb: UserDatabase?= null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_home, container, false)
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment HomeFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            HomeFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        sharedPref = requireContext().getSharedPreferences("SHARED_PREF", Context.MODE_PRIVATE)
+        userDb = UserDatabase.getInstance(requireContext())
+
+        initRecyclerView()
+        getDataFromDb()
+        addNote()
+        showUsername()
+        doLogout()
+    }
+
+    private fun initRecyclerView() {
+        binding.apply {
+            noteAdapter = NoteAdapter(action)
+            rvData.adapter = noteAdapter
+            rvData.layoutManager = LinearLayoutManager(requireContext())
+        }
+    }
+
+    private fun addNote() {
+        binding.fabAdd.setOnClickListener {
+            showCustomDialog(null)
+        }
+    }
+
+    private fun showCustomDialog(note: Note?) {
+        // Menghubungkan layout
+        val customLayout = LayoutInflater.from(requireContext()).inflate(R.layout.tambah_layout, null, false)
+
+        // Mmebuat builder AlertDialog
+        val dialogBuilder = AlertDialog.Builder(requireContext())
+
+        // Memanggil view dari custom layout
+        val tvTitleDialog = customLayout.findViewById<TextView>(R.id.title_dialog)
+        val etTitle = customLayout.findViewById<TextInputLayout>(R.id.edit_title)
+        val etNote = customLayout.findViewById<TextInputLayout>(R.id.edit_note)
+        val btnAddUpdate = customLayout.findViewById<Button>(R.id.btn_add_update)
+
+        if (note != null) {
+            etTitle.editText?.setText(note.titleNote)
+            etNote.editText?.setText(note.note)
+            tvTitleDialog.text = "Edit"
+            btnAddUpdate.text = "Perbarui"
+        }
+
+        // Mengubah layout AlertDialog menggunakan custom layout
+        dialogBuilder.setView(customLayout)
+
+        // Membuat AlertDialog baru dari builder yang sudah di custom layout
+        val dialog = dialogBuilder.create()
+
+        btnAddUpdate.setOnClickListener {
+            val title = etTitle.editText?.text.toString()
+            val notes = etNote.editText?.text.toString()
+
+            if (note != null) {
+                val newNote = Note(note.id, note.idUser, title, notes)
+                updateToDb(newNote)
+            } else {
+                insertToDb(title, notes)
+            }
+
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun getDataFromDb() {
+        val getUserId = sharedPref.getInt("USERID", 0)
+        CoroutineScope(Dispatchers.IO).launch {
+            val result = userDb?.userDao()?.getAllNote(getUserId)
+            if (!result.isNullOrEmpty()) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    noteAdapter.updateDataRecycler(result)
+                    binding.txtNoteEmpty.isGone = true
+                }
+            } else {
+                CoroutineScope(Dispatchers.Main).launch {
+                    noteAdapter.updateDataRecycler(result!!)
+                    binding.txtNoteEmpty.isGone = false
                 }
             }
+        }
+    }
+
+    private fun insertToDb(title: String, note: String) {
+        val getUserId = sharedPref.getInt("USERID", 0)
+        val notes = Note(null, getUserId, title, note)
+        CoroutineScope(Dispatchers.IO).launch {
+            val result = userDb?.userDao()?.insertNote(notes)
+            if (result != 0L) {
+                getDataFromDb()
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(requireContext(), "Berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(requireContext(), "Gagal ditambahkan", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun updateToDb(note: Note) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val result = userDb?.userDao()?.updateNote(note)
+            if (result != 0) {
+                getDataFromDb()
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(requireContext(), "Berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(requireContext(), "Gagal diperbarui", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun showDeleteDialog(note: Note) {
+        val dialog = AlertDialog.Builder(requireContext())
+        dialog.setTitle("Hapus Catatan ?")
+        dialog.setCancelable(true)
+        dialog.setPositiveButton("Hapus") { dialogInterface, _ ->
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = userDb?.userDao()?.deleteNote(note)
+                if (result != 0) {
+                    getDataFromDb()
+                    CoroutineScope(Dispatchers.Main).launch {
+                        Toast.makeText(requireContext(), "Berhasil dihapus", Toast.LENGTH_SHORT).show()
+                        dialogInterface.dismiss()
+                    }
+                } else {
+                    CoroutineScope(Dispatchers.Main).launch {
+                        Toast.makeText(requireContext(), "Gagal dihapus", Toast.LENGTH_SHORT).show()
+                        dialogInterface.dismiss()
+                    }
+                }
+            }
+        }
+        dialog.setNegativeButton("Cancel") { dialogInterface, _ ->
+            dialogInterface.dismiss()
+        }
+        dialog.show()
+    }
+
+    private fun showUsername() {
+        val getUsername = sharedPref.getString("USERNAME", "Default Value")
+        binding.txtWelcomeUser.text = "Welcome, $getUsername"
+    }
+
+    private fun doLogout() {
+        binding.btnLogout.setOnClickListener {
+            val editor = sharedPref.edit()
+            editor.apply {
+                clear()
+                putBoolean("LOGIN_STATE", false)
+                apply()
+                startActivity(Intent(requireContext(), AuthActivity::class.java))
+                requireActivity().finish()
+            }
+
+        }
+    }
+
+    private val action = object : NoteActionListener {
+        override fun onDelete(note: Note) {
+            showDeleteDialog(note)
+        }
+
+        override fun onEdit(note: Note) {
+            showCustomDialog(note)
+        }
     }
 }
