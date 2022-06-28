@@ -54,11 +54,16 @@ class HomeFragment : Fragment() {
         sharedPref = requireContext().getSharedPreferences("SHARED_PREF", Context.MODE_PRIVATE)
         userDb = UserDatabase.getInstance(requireContext())
 
+        welcomeUsername()
         initRecyclerView()
-        getDataFromDb()
+        getNotesData()
         addNote()
-        showUsername()
-        doLogout()
+        actionLogout()
+    }
+
+    private fun welcomeUsername() {
+        val getUsername = sharedPref.getString("USERNAME", "Default Value")
+        binding.txtWelcomeUser.text = "Welcome, $getUsername"
     }
 
     private fun initRecyclerView() {
@@ -76,13 +81,9 @@ class HomeFragment : Fragment() {
     }
 
     private fun showCustomDialog(note: Note?) {
-        // Menghubungkan layout
         val customLayout = LayoutInflater.from(requireContext()).inflate(R.layout.tambah_layout, null, false)
-
-        // Mmebuat builder AlertDialog
         val dialogBuilder = AlertDialog.Builder(requireContext())
 
-        // Memanggil view dari custom layout
         val tvTitleDialog = customLayout.findViewById<TextView>(R.id.title_dialog)
         val etTitle = customLayout.findViewById<TextInputLayout>(R.id.edit_title)
         val etNote = customLayout.findViewById<TextInputLayout>(R.id.edit_note)
@@ -95,10 +96,7 @@ class HomeFragment : Fragment() {
             btnAddUpdate.text = "Perbarui"
         }
 
-        // Mengubah layout AlertDialog menggunakan custom layout
         dialogBuilder.setView(customLayout)
-
-        // Membuat AlertDialog baru dari builder yang sudah di custom layout
         val dialog = dialogBuilder.create()
 
         btnAddUpdate.setOnClickListener {
@@ -111,14 +109,12 @@ class HomeFragment : Fragment() {
             } else {
                 insertToDb(title, notes)
             }
-
             dialog.dismiss()
         }
-
         dialog.show()
     }
 
-    private fun getDataFromDb() {
+    private fun getNotesData() {
         val getUserId = sharedPref.getInt("USERID", 0)
         CoroutineScope(Dispatchers.IO).launch {
             val result = userDb?.userDao()?.getAllNote(getUserId)
@@ -142,13 +138,15 @@ class HomeFragment : Fragment() {
         CoroutineScope(Dispatchers.IO).launch {
             val result = userDb?.userDao()?.addNotes(notes)
             if (result != 0L) {
-                getDataFromDb()
+                getNotesData()
                 CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(requireContext(), "Berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(),
+                        "Berhasil menambahkan notes", Toast.LENGTH_SHORT).show()
                 }
             } else {
                 CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(requireContext(), "Gagal ditambahkan", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(),
+                        "Gagal menambahkan notes", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -158,13 +156,15 @@ class HomeFragment : Fragment() {
         CoroutineScope(Dispatchers.IO).launch {
             val result = userDb?.userDao()?.updateNote(note)
             if (result != 0) {
-                getDataFromDb()
+                getNotesData()
                 CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(requireContext(), "Berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(),
+                        "Berhasil diperbarui", Toast.LENGTH_SHORT).show()
                 }
             } else {
                 CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(requireContext(), "Gagal diperbarui", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(),
+                        "Gagal diperbarui", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -178,14 +178,16 @@ class HomeFragment : Fragment() {
             CoroutineScope(Dispatchers.IO).launch {
                 val result = userDb?.userDao()?.deleteNote(note)
                 if (result != 0) {
-                    getDataFromDb()
+                    getNotesData()
                     CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(requireContext(), "Berhasil dihapus", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(),
+                            "Berhasil dihapus", Toast.LENGTH_SHORT).show()
                         dialogInterface.dismiss()
                     }
                 } else {
                     CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(requireContext(), "Gagal dihapus", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(),
+                            "Gagal dihapus", Toast.LENGTH_SHORT).show()
                         dialogInterface.dismiss()
                     }
                 }
@@ -197,12 +199,7 @@ class HomeFragment : Fragment() {
         dialog.show()
     }
 
-    private fun showUsername() {
-        val getUsername = sharedPref.getString("USERNAME", "Default Value")
-        binding.txtWelcomeUser.text = "Welcome, $getUsername"
-    }
-
-    private fun doLogout() {
+    private fun actionLogout() {
         binding.btnLogout.setOnClickListener {
             val editor = sharedPref.edit()
             editor.apply {
@@ -216,6 +213,7 @@ class HomeFragment : Fragment() {
         }
     }
 
+    //recycle view action listener
     private val action = object : NoteActionListener {
         override fun onDelete(note: Note) {
             showDeleteDialog(note)
