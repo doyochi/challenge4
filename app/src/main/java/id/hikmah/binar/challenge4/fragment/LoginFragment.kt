@@ -90,7 +90,7 @@ class LoginFragment : Fragment() {
     private fun moveToHome(username: String, password: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val checkLogin = userDb?.userDao()?.checkLogin(username, password)
-            val getId = userDb?.userDao()?.getUserId(username)
+            val getId = userDb?.userDao()?.getId(username)
             if (!checkLogin.isNullOrEmpty()) {
                 CoroutineScope(Dispatchers.Main).launch {
                     val userID = getId?.id!!

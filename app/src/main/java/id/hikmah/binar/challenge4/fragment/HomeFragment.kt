@@ -140,7 +140,7 @@ class HomeFragment : Fragment() {
         val getUserId = sharedPref.getInt("USERID", 0)
         val notes = Note(null, getUserId, title, note)
         CoroutineScope(Dispatchers.IO).launch {
-            val result = userDb?.userDao()?.insertNote(notes)
+            val result = userDb?.userDao()?.addNotes(notes)
             if (result != 0L) {
                 getDataFromDb()
                 CoroutineScope(Dispatchers.Main).launch {

@@ -58,7 +58,7 @@ class RegisterFragment : Fragment() {
     private fun insertToDb(username: String, email: String, password: String) {
         val user = User(null, username, email, password)
         CoroutineScope(Dispatchers.IO).launch {
-            val checkUsername = userDb?.userDao()?.checkRegisteredUsername(username)
+            val checkUsername = userDb?.userDao()?.checkUsername(username)
             if (!checkUsername.isNullOrEmpty()) {
                 CoroutineScope(Dispatchers.Main).launch {
                     Toast.makeText(requireContext(),
