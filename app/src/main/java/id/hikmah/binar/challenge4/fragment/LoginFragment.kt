@@ -24,7 +24,6 @@ class LoginFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var userDb: UserDatabase?= null
-
     private lateinit var sharedPref: SharedPreferences
 
     override fun onCreateView(
@@ -46,79 +45,17 @@ class LoginFragment : Fragment() {
         userDb = UserDatabase.getInstance(requireContext())
         sharedPref = requireContext().getSharedPreferences("SHARED_PREF", Context.MODE_PRIVATE)
 
-        checkLoginState()
-        // Melakukan submit Login
+        isLogin()
         doLogin()
         moveToRegister()
     }
 
-    private fun checkLoginState() {
+    private fun isLogin() {
         val loginState = sharedPref.getBoolean("LOGIN_STATE", false)
-        if (loginState) { // true = pindah ke Home
-            startActivity(Intent(requireContext(), MainActivity::class.java))
+        if (loginState) {
+            val intent = Intent(requireContext(),MainActivity::class.java)
+            startActivity(intent)
             requireActivity().finish()
-        }
-    }
-
-    private fun doLogin() {
-        binding.btnLogin.setOnClickListener {
-            val etUsername = binding.editUsername.editableText.toString()
-            val etPassword = binding.editPassword.editableText.toString()
-            if (loginValidation(etUsername, etPassword)) {
-                moveToHome(etUsername, etPassword)
-            }
-        }
-    }
-
-    private fun loginValidation(username: String, password: String): Boolean {
-        var result = true
-        if (username.isEmpty()) { // jika kosong
-            binding.editUsername.error = "Username tidak boleh kosong!"
-            result = false
-        } else {
-            binding.editUsername
-        }
-
-        if (password.isEmpty()) { // jika kosong
-            binding.editPassword.error = "Password tidak boleh kosong!"
-            result = false
-        }  else {
-            binding.editPassword
-        }
-
-        return result
-    }
-
-    private fun moveToHome(username: String, password: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            // query mencari user & pass
-            val checkLogin = userDb?.userDao()?.checkLogin(username, password)
-            // query mencari ID dari user login
-            val getId = userDb?.userDao()?.getUserId(username)
-            // Jika user & pass cocok (ada pada DB)
-            if (!checkLogin.isNullOrEmpty()) {
-                CoroutineScope(Dispatchers.Main).launch {
-                    // Simpan ID pada variable
-                    val userID = getId?.id!!
-                    // Buat editor sharedpref
-                    val editor = sharedPref.edit()
-                    // Simpan ke sharedpref
-                    editor.apply {
-                        putInt("USERID", userID)
-                        putString("USERNAME", username)
-                        putBoolean("LOGIN_STATE", true)
-                        apply()
-                    }
-
-//                    Toast.makeText(requireContext(), "$userID berhasil login", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(requireContext(), MainActivity::class.java))
-                    requireActivity().finish()
-                }
-            } else { // Jika user & pass tdk ditemukan
-                CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(requireContext(), "Username atau Password salah", Toast.LENGTH_SHORT).show()
-                }
-            }
         }
     }
 
@@ -128,5 +65,54 @@ class LoginFragment : Fragment() {
         }
     }
 
+    private fun doLogin() {
+        binding.btnLogin.setOnClickListener {
+            val etUsername = binding.editUsername.editableText.toString()
+            val etPassword = binding.editPassword.editableText.toString()
+            if (validateLogin(etUsername, etPassword)) {
+                moveToHome(etUsername, etPassword)
+            }
+        }
+    }
+
+    private fun validateLogin(username: String, password: String): Boolean {
+        if (username.isEmpty()) {
+            binding.editUsername.error = "Mohon isi username"
+            return false
+        }
+        if (password.isEmpty()) {
+            binding.editPassword.error = "Mohon isi password"
+            return false
+        }
+        return true
+    }
+
+    private fun moveToHome(username: String, password: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val checkLogin = userDb?.userDao()?.checkLogin(username, password)
+            val getId = userDb?.userDao()?.getUserId(username)
+            if (!checkLogin.isNullOrEmpty()) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    val userID = getId?.id!!
+                    val editor = sharedPref.edit()
+                    editor.apply {
+                        putInt("USERID", userID)
+                        putString("USERNAME", username)
+                        putBoolean("LOGIN_STATE", true)
+                        apply()
+                    }
+                    Toast.makeText(requireContext(), "Selamat datang $userID", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(requireContext(), MainActivity::class.java))
+                    requireActivity().finish()
+                }
+            }
+
+            else {
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(requireContext(), "Username atau Password salah", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
 }
