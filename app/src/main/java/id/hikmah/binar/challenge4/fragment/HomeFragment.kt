@@ -66,6 +66,20 @@ class HomeFragment : Fragment() {
         binding.txtWelcomeUser.text = "Welcome, $getUsername"
     }
 
+    private fun actionLogout() {
+        binding.btnLogout.setOnClickListener {
+            val editor = sharedPref.edit()
+            editor.apply {
+                clear()
+                putBoolean("LOGIN_STATE", false)
+                apply()
+                startActivity(Intent(requireContext(), AuthActivity::class.java))
+                requireActivity().finish()
+            }
+
+        }
+    }
+
     private fun initRecyclerView() {
         binding.apply {
             noteAdapter = NoteAdapter(action)
@@ -197,20 +211,6 @@ class HomeFragment : Fragment() {
             dialogInterface.dismiss()
         }
         dialog.show()
-    }
-
-    private fun actionLogout() {
-        binding.btnLogout.setOnClickListener {
-            val editor = sharedPref.edit()
-            editor.apply {
-                clear()
-                putBoolean("LOGIN_STATE", false)
-                apply()
-                startActivity(Intent(requireContext(), AuthActivity::class.java))
-                requireActivity().finish()
-            }
-
-        }
     }
 
     //recycle view action listener
